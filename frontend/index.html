@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VisionSign AI - Real-time Sign Language Recognition & Learning</title>
+  <meta name="description" content="AI-powered real-time American Sign Language recognition, interactive dictionary, speech translation, and gesture studio using Python ML backend and MediaPipe.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/static/styles.css">
+
+  <!-- MediaPipe Hands & Camera JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="app-background">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Navbar -->
+    <header class="navbar glass-card">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-hand-sparkles"></i>
+        </div>
+        <div class="brand-text">
+          <h1>VisionSign <span>AI</span></h1>
+          <p>Python Neural Gesture Engine</p>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <button class="nav-btn active" data-tab="tab-translator">
+          <i class="fa-solid fa-video"></i> Live Translator
+        </button>
+        <button class="nav-btn" data-tab="tab-dictionary">
+          <i class="fa-solid fa-book-bookmark"></i> ASL Dictionary
+        </button>
+        <button class="nav-btn" data-tab="tab-quiz">
+          <i class="fa-solid fa-trophy"></i> Practice & Quiz
+        </button>
+        <button class="nav-btn" data-tab="tab-studio">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Custom Studio
+        </button>
+      </nav>
+
+      <div class="system-status glass-pill">
+        <span class="status-dot green" id="statusDot"></span>
+        <span id="statusText">AI Model Ready</span>
+      </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="main-content">
+
+      <!-- TAB 1: LIVE TRANSLATOR -->
+      <section id="tab-translator" class="tab-pane active">
+        <div class="translator-layout">
+          <!-- Video & Canvas Detection Feed -->
+          <div class="viewport-card glass-card">
+            <div class="viewport-header">
+              <div class="feed-title">
+                <i class="fa-solid fa-camera-retro"></i> Live Hand Camera Feed
+              </div>
+              <div class="stats-pills">
+                <span class="pill"><i class="fa-solid fa-gauge-high"></i> <span id="fpsCounter">0</span> FPS</span>
+                <span class="pill" id="handDetectPill"><i class="fa-solid fa-hand"></i> Waiting for Hand...</span>
+              </div>
+            </div>
+
+            <div class="video-container">
+              <video id="webcam" autoplay playsinline muted></video>
+              <canvas id="skeletonCanvas"></canvas>
+              
+              <!-- Video Overlay Watermark & Controls -->
+              <div class="video-overlay-controls">
+                <button id="toggleCameraBtn" class="glass-btn btn-sm">
+                  <i class="fa-solid fa-video"></i> Pause Camera
+                </button>
+              </div>
+
+              <!-- Live Prediction Banner -->
+              <div class="prediction-overlay glass-card" id="predictionBanner">
+                <div class="pred-label-box">
+                  <span class="pred-sub">DETECTED SIGN</span>
+                  <span class="pred-main" id="detectedSign">--</span>
+                </div>
+                <div class="confidence-gauge">
+                  <div class="gauge-label">
+                    <span>AI Confidence</span>
+                    <span id="confidenceValue">0%</span>
+                  </div>
+                  <div class="gauge-bar-bg">
+                    <div class="gauge-bar-fill" id="confidenceBar" style="width: 0%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Translation Output Panel -->
+          <div class="translation-panel glass-card">
+            <div class="panel-header">
+              <h2><i class="fa-solid fa-language"></i> Translation Speech Board</h2>
+              <p>Recognized signs assemble into spoken words in real time.</p>
+            </div>
+
+            <div class="sentence-box glass-inset">
+              <div class="buffer-text" id="sentenceBuffer">
+                <span class="placeholder-text">Signed letters will appear here...</span>
+              </div>
+            </div>
+
+            <div class="speech-controls">
+              <button id="speakBtn" class="action-btn btn-primary btn-lg">
+                <i class="fa-solid fa-volume-high"></i> Speak Text
+              </button>
+              <button id="spaceBtn" class="action-btn btn-secondary">
+                <i class="fa-solid fa-text-width"></i> Space
+              </button>
+              <button id="backspaceBtn" class="action-btn btn-secondary">
+                <i class="fa-solid fa-delete-left"></i> Backspace
+              </button>
+              <button id="clearBtn" class="action-btn btn-danger">
+                <i class="fa-solid fa-trash-can"></i> Clear
+              </button>
+            </div>
+
+            <!-- Top Candidates Breakdown -->
+            <div class="candidates-box">
+              <h3><i class="fa-solid fa-chart-bar"></i> Top Model Probabilities</h3>
+              <div class="candidate-list" id="candidateList">
+                <div class="candidate-item empty">Waiting for hand detection...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: ASL DICTIONARY -->
+      <section id="tab-dictionary" class="tab-pane">
+        <div class="dictionary-container glass-card">
+          <div class="dictionary-header">
+            <div>
+              <h2><i class="fa-solid fa-book-open"></i> ASL Interactive Dictionary</h2>
+              <p>Explore the complete ASL alphabet (A-Z), numbers (0-9), and common expressions.</p>
+            </div>
+            <div class="search-box glass-inset">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="dictSearch" placeholder="Search signs (e.g. A, Hello, Peace)...">
+            </div>
+          </div>
+
+          <div class="filter-pills">
+            <button class="filter-btn active" data-category="ALL">All Signs</button>
+            <button class="filter-btn" data-category="Alphabet">Alphabet (A-Z)</button>
+            <button class="filter-btn" data-category="Numbers">Numbers (0-9)</button>
+            <button class="filter-btn" data-category="Phrases">Common Phrases</button>
+          </div>
+
+          <div class="dict-grid" id="dictGrid">
+            <!-- Rendered dynamically by app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PRACTICE & QUIZ -->
+      <section id="tab-quiz" class="tab-pane">
+        <div class="quiz-layout">
+          <div class="quiz-card glass-card">
+            <div class="quiz-header">
+              <h2><i class="fa-solid fa-circle-play"></i> Real-time AI Quiz Challenge</h2>
+              <div class="quiz-score-badge">
+                <span>Score: <strong id="quizScore">0</strong></span>
+                <span>Streak: <strong id="quizStreak">0</strong> 🔥</span>
+              </div>
+            </div>
+
+            <div class="target-prompt-card glass-inset">
+              <span class="prompt-sub">PLEASE SHOW THIS SIGN TO THE CAMERA:</span>
+              <div class="prompt-target" id="quizTargetSign">--</div>
+              <div class="prompt-info" id="quizSignTips">Click "Start Quiz" to begin your training session.</div>
+            </div>
+
+            <div class="quiz-status-banner" id="quizStatusBanner">
+              <i class="fa-solid fa-clock"></i> Show sign to trigger real-time AI evaluation
+            </div>
+
+            <div class="quiz-action-bar">
+              <button id="startQuizBtn" class="action-btn btn-primary btn-lg">
+                <i class="fa-solid fa-play"></i> Start Quiz Session
+              </button>
+              <button id="skipQuizBtn" class="action-btn btn-secondary">
+                <i class="fa-solid fa-forward"></i> Skip Sign
+              </button>
+            </div>
+          </div>
+
+          <!-- Video feed mirror during quiz -->
+          <div class="quiz-feed-card glass-card">
+            <h3><i class="fa-solid fa-video"></i> Live Camera Verification</h3>
+            <div class="quiz-video-box">
+              <canvas id="quizCanvasMirror"></canvas>
+            </div>
+            <div class="live-eval-badge" id="quizEvalBadge">
+              Detection: <span id="quizCurrentDetected">None</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: CUSTOM SIGN STUDIO -->
+      <section id="tab-studio" class="tab-pane">
+        <div class="studio-card glass-card">
+          <div class="studio-header">
+            <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Custom Gesture Recorder & Trainer</h2>
+            <p>Teach the Python AI model your own custom hand signs in 3 easy steps!</p>
+          </div>
+
+          <div class="studio-steps">
+            <div class="step-card glass-inset">
+              <span class="step-num">1</span>
+              <h4>Enter Gesture Label</h4>
+              <input type="text" id="customLabelInput" class="studio-input" placeholder="e.g. MY_NAME, HELP, WATER">
+            </div>
+
+            <div class="step-card glass-inset">
+              <span class="step-num">2</span>
+              <h4>Record Hand Samples</h4>
+              <p>Hold your hand sign steady in front of the camera while recording.</p>
+              <button id="recordSamplesBtn" class="action-btn btn-primary">
+                <i class="fa-solid fa-circle-dot"></i> Record 30 Samples
+              </button>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="recordProgress" style="width: 0%;"></div>
+              </div>
+              <span class="progress-text" id="recordCountText">0 / 30 Samples</span>
+            </div>
+
+            <div class="step-card glass-inset">
+              <span class="step-num">3</span>
+              <h4>Train AI Model</h4>
+              <p>Send samples to Python backend for instant dynamic retrain.</p>
+              <button id="trainCustomBtn" class="action-btn btn-emerald" disabled>
+                <i class="fa-solid fa-brain"></i> Retrain AI Classifier
+              </button>
+            </div>
+          </div>
+
+          <div class="studio-console glass-inset">
+            <h4><i class="fa-solid fa-terminal"></i> AI Training Log</h4>
+            <div class="console-output" id="studioLog">
+              System ready. Enter a gesture name and click Record to begin custom sign training.
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="/static/app.js"></script>
+</body>
+</html>
